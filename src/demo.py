@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import time
+import argparse
 from pymodbus.client.sync import ModbusTcpClient as ModbusClient
 
 
@@ -26,7 +27,7 @@ def get_channelA_vacuum(client):
 
 
 def get_channelB_vacuum(client):
-    """Same as the one of channel B."""
+    """Same as the one of channel A."""
     result = client.read_holding_registers(address=259, count=1, unit=65)
     vacuum = result.registers[0]
     return vacuum
@@ -80,7 +81,7 @@ def set_channelA_control(client, modename, command):
 
 
 def set_channelB_control(client, modename, command):
-    """Same as the one of channel B."""
+    """Same as the one of channel A."""
     if modename == "Release":
         modeval = 0x0000
     elif modename == "Grip":
@@ -88,6 +89,18 @@ def set_channelB_control(client, modename, command):
     elif modename == "Idle":
         modeval = 0x0200
     result = client.write_register(address=1, value=modeval+command, unit=65)
+
+
+def get_options():
+    """Returns user-specific options."""
+    parser = argparse.ArgumentParser(description='Set options.')
+    parser.add_argument(
+        '--ip', dest='ip', type=str, default="192.168.1.1",
+        help='set ip address')
+    parser.add_argument(
+        '--port', dest='port', type=str, default="502",
+        help='set port number')
+    return parser.parse_args()
 
 
 def run_demo():
@@ -127,6 +140,7 @@ def run_demo():
 
 
 if __name__ == '__main__':
-    toolchanger_ip = "192.168.1.1"
-    toolchanger_port = "502"
+    args = get_options()
+    toolchanger_ip = args.ip
+    toolchanger_port = args.port
     run_demo()
