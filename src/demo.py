@@ -35,7 +35,7 @@ def get_channelB_vacuum(client):
 
 def set_channelA_control(client, modename, command):
     """This register allows for control of channel A.
-       
+
        The register is split into two 8-bit fields:
        Bits 15-8        Bits 7-0
        Control mode     Target vacuum
@@ -98,12 +98,12 @@ def vacuum_on(client, sleep_sec=1.0):
     commands = [modeval+command, modeval+command]
     result = client.write_registers(address=0, values=commands, unit=65)
 
-    print("Turn on all vacuums.") 
+    print("\nTurn on all vacuums.")
     start = time.time()
     while True:
-        print("Current channelA's vacuum: " +
-              str(get_channelA_vacuum(client)))
-        print("Current channelB's vacuum: " +
+        print("Current vacuums, channel A: " +
+              str(get_channelA_vacuum(client)) +
+              ", channel B: " +
               str(get_channelB_vacuum(client)))
         if time.time() - start > sleep_sec:
             break
@@ -115,7 +115,7 @@ def release_vacuum(client):
     command = 0x0000  # 0 % vacuum
     commands = [modeval+command, modeval+command]
 
-    print("Release all vacuums.")
+    print("\nRelease all vacuums.")
     result = client.write_registers(address=0, values=commands, unit=65)
     time.sleep(1.0)
 
@@ -126,10 +126,10 @@ def vacuum_on_channelA(client, sleep_sec=1.0):
     command = 0x00ff  # 100 % vacuum
     result = client.write_register(address=0, value=modeval+command, unit=65)
 
-    print("Turn on the vacuum of channel A.") 
+    print("\nTurn on the vacuum of channel A.")
     start = time.time()
     while True:
-        print("Current channelA's vacuum: " +
+        print("Current channel A's vacuum: " +
               str(get_channelA_vacuum(client)))
         if time.time() - start > sleep_sec:
             break
@@ -141,10 +141,10 @@ def vacuum_on_channelB(client, sleep_sec=1.0):
     command = 0x00ff  # 100 % vacuum
     result = client.write_register(address=1, value=modeval+command, unit=65)
 
-    print("Turn on the vacuum of channel B.") 
+    print("\nTurn on the vacuum of channel B.")
     start = time.time()
     while True:
-        print("Current channelB's vacuum: " +
+        print("Current channel B's vacuum: " +
               str(get_channelB_vacuum(client)))
         if time.time() - start > sleep_sec:
             break
@@ -154,7 +154,7 @@ def release_vacuum_channelA(client):
     """Releases the vacuum of channel A."""
     modeval = 0x0000  # release
     command = 0x0000  # 0 % vacuum
-    print("Release the vacuum of channel A.") 
+    print("\nRelease the vacuum of channel A.")
     result = client.write_register(address=0, value=modeval+command, unit=65)
     time.sleep(1.0)
 
@@ -163,7 +163,7 @@ def release_vacuum_channelB(client):
     """Releases the vacuum of channel B."""
     modeval = 0x0000  # release
     command = 0x0000  # 0 % vacuum
-    print("Release the vacuum of channel B.") 
+    print("\nRelease the vacuum of channel B.")
     result = client.write_register(address=1, value=modeval+command, unit=65)
     time.sleep(1.0)
 
