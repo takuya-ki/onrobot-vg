@@ -91,6 +91,83 @@ def set_channelB_control(client, modename, command):
     result = client.write_register(address=1, value=modeval+command, unit=65)
 
 
+def vacuum_on(client, sleep_sec=1.0):
+    """Turns on all vacuums."""
+    modeval = 0x0100  # grip
+    command = 0x00ff  # 100 % vacuum
+    commands = [modeval+command, modeval+command]
+    result = client.write_registers(address=0, values=commands, unit=65)
+
+    print("Turn on all vacuums.") 
+    start = time.time()
+    while True:
+        print("Current channelA's vacuum: " +
+              str(get_channelA_vacuum(client)))
+        print("Current channelB's vacuum: " +
+              str(get_channelB_vacuum(client)))
+        if time.time() - start > sleep_sec:
+            break
+
+
+def release_vacuum(client):
+    """Releases all vacuums"""
+    modeval = 0x0000  # release
+    command = 0x0000  # 0 % vacuum
+    commands = [modeval+command, modeval+command]
+
+    print("Release all vacuums.")
+    result = client.write_registers(address=0, values=commands, unit=65)
+    time.sleep(1.0)
+
+
+def vacuum_on_channelA(client, sleep_sec=1.0):
+    """Turns on the vacuum of channel A."""
+    modeval = 0x0100  # grip
+    command = 0x00ff  # 100 % vacuum
+    result = client.write_register(address=0, value=modeval+command, unit=65)
+
+    print("Turn on the vacuum of channel A.") 
+    start = time.time()
+    while True:
+        print("Current channelA's vacuum: " +
+              str(get_channelA_vacuum(client)))
+        if time.time() - start > sleep_sec:
+            break
+
+
+def vacuum_on_channelB(client, sleep_sec=1.0):
+    """Turns on the vacuum of channel B."""
+    modeval = 0x0100  # grip
+    command = 0x00ff  # 100 % vacuum
+    result = client.write_register(address=1, value=modeval+command, unit=65)
+
+    print("Turn on the vacuum of channel B.") 
+    start = time.time()
+    while True:
+        print("Current channelB's vacuum: " +
+              str(get_channelB_vacuum(client)))
+        if time.time() - start > sleep_sec:
+            break
+
+
+def release_vacuum_channelA(client):
+    """Releases the vacuum of channel A."""
+    modeval = 0x0000  # release
+    command = 0x0000  # 0 % vacuum
+    print("Release the vacuum of channel A.") 
+    result = client.write_register(address=0, value=modeval+command, unit=65)
+    time.sleep(1.0)
+
+
+def release_vacuum_channelB(client):
+    """Releases the vacuum of channel B."""
+    modeval = 0x0000  # release
+    command = 0x0000  # 0 % vacuum
+    print("Release the vacuum of channel B.") 
+    result = client.write_register(address=1, value=modeval+command, unit=65)
+    time.sleep(1.0)
+
+
 def get_options():
     """Returns user-specific options."""
     parser = argparse.ArgumentParser(description='Set options.')
@@ -115,27 +192,15 @@ def run_demo():
         timeout=1)
     client.connect()
 
-    time.sleep(1.0)
     print("Vacuum limit [mA]: " +
           str(get_vacuum_limit(client)))
 
-    # channel A
-    set_channelA_control(client, "Grip", 0x00ff)  # 100% vacuum
-    time.sleep(2.0)
-    # if sth was gripped, the value is changed
-    print("Current channelA's vacuum: " +
-          str(get_channelA_vacuum(client)))
-    time.sleep(1.0)
-    set_channelA_control(client, "Release", 0x0000)  # 0% vacuum
-    # channel B
-    set_channelB_control(client, "Grip", 0x00ff)  # 100% vacuum
-    time.sleep(2.0)
-    # if sth was gripped, the value is changed
-    print("Current channelB's vacuum: " +
-          str(get_channelB_vacuum(client)))
-    time.sleep(1.0)
-    set_channelB_control(client, "Release", 0x0000)  # 0% vacuum
-
+    vacuum_on(client, sleep_sec=2.0)
+    release_vacuum(client)
+    vacuum_on_channelA(client, sleep_sec=2.0)
+    release_vacuum_channelA(client)
+    vacuum_on_channelB(client, sleep_sec=2.0)
+    release_vacuum_channelB(client)
     client.close()
 
 
