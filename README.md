@@ -1,6 +1,6 @@
-# onrobot-vgc10
+# onrobot-vg
 
-Controller for OnRobot VGC10 gripper.
+Controller for OnRobot VG10 and VGC10 grippers.
 
 # Requirements
 
@@ -9,7 +9,7 @@ Controller for OnRobot VGC10 gripper.
 
 # Installation
 
-	$ git clone git@github.com:takuya-ki/onrobot-vgc10.git; cd onrobot-vgc10
+	$ git clone git@github.com:takuya-ki/onrobot-vg.git; cd onrobot-vg
 	$ pip install -r requirements.txt
 
 # Usage

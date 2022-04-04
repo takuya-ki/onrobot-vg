@@ -2,7 +2,7 @@
 
 import argparse
 
-from onrobot import VGC10
+from onrobot import VG
 
 
 def get_options():
@@ -19,16 +19,16 @@ def get_options():
 
 def run_demo():
     """Runs pump on/off demonstration once."""
-    vgc10 = VGC10(toolchanger_ip, toolchanger_port)
+    vg = VG(toolchanger_ip, toolchanger_port)
 
-    vgc10.vacuum_on(sleep_sec=2.0)
-    vgc10.release_vacuum()
-    vgc10.vacuum_on_channelA(sleep_sec=2.0)
-    vgc10.release_vacuum_channelA()
-    vgc10.vacuum_on_channelB(sleep_sec=2.0)
-    vgc10.release_vacuum_channelB()
+    vg.vacuum_on(sleep_sec=5.0)
+    vg.release_vacuum()
+    vg.vacuum_on_channelA(sleep_sec=5.0)
+    vg.release_vacuum_channelA()
+    vg.vacuum_on_channelB(sleep_sec=5.0)
+    vg.release_vacuum_channelB()
 
-    vgc10.close_connection()
+    vg.close_connection()
 
 
 if __name__ == '__main__':

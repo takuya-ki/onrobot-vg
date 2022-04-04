@@ -4,7 +4,7 @@ import time
 from pymodbus.client.sync import ModbusTcpClient as ModbusClient
 
 
-class VGC10():
+class VG():
 
     def __init__(self, ip, port):
         self.client = ModbusClient(
