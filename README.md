@@ -19,6 +19,8 @@ Controller for OnRobot VG10 and VGC10 grippers.
 3. Execute demo script as below  
 	`$ python src/demo.py --ip 192.168.1.1 --port 502`
 
+<img src="img/vgc10_2x.gif" height="200">  
+
 # Author / Contributor
 
 [Takuya Kiyokawa](https://takuya-ki.github.io/)
