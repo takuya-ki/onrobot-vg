@@ -7,7 +7,7 @@ Controller for OnRobot VG10 and VGC10 grippers.
 ## Requirements
 
 - Python 3.7.3
-- pymodbus==2.5.3
+  - pymodbus==2.5.3
 
 ## Installation
 
