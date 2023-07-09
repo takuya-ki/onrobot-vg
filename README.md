@@ -1,6 +1,7 @@
 # onrobot-vg
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![repo size](https://img.shields.io/github/repo-size/takuya-ki/onrobot-vg)
 
 Controller for OnRobot VG10 and VGC10 grippers.
 
