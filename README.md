@@ -13,8 +13,7 @@ Controller for OnRobot VG10 and VGC10 grippers.
 ## Installation
 
 ```bash
-git clone git@github.com:takuya-ki/onrobot-vg.git; cd onrobot-vg
-pip install -r requirements.txt
+git clone git@github.com:takuya-ki/onrobot-vg.git && cd onrobot-vg && pip install -r requirements.txt
 ```
 
 ## Usage
