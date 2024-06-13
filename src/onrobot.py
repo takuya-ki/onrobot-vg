@@ -1,22 +1,63 @@
 #!/usr/bin/env python3
 
 import time
-from pymodbus.client.sync import ModbusTcpClient as ModbusClient
+from pymodbus.client.sync import ModbusTcpClient, ModbusSerialClient
+
 
 
 class VG():
 
-    def __init__(self, ip, port):
-        self.client = ModbusClient(
-            ip,
-            port=port,
-            stopbits=1,
-            bytesize=8,
-            parity='E',
-            baudrate=115200,
-            timeout=1)
+    def __init__(self, ip=None, port=None, device=None):
+        # Check one of the connection methods is provided
+        if not ip and device is None:
+            raise Exception("Please provide either an IP address or a serial device.")
+        # If both are provided, use the IP address
+        if ip and device is not None:
+            print("Both IP address and serial device provided. Using the IP address.")
+            device = None
+        
+        # Set the default interface configuration
+        config = {
+            "stopbits": 1,
+            "bytesize": 8,
+            "parity": 'E',
+            "baudrate": 115200,
+            "timeout": 1
+        }
+
+        self.client = None
+        # Create the client, depending on the connection method
+        if ip:
+            self.client = self._create_client(ip, port, config)
+        if device:
+            self.client = self._create_client_serial(device, config)
+        assert self.client is not None, "Error creating the client."
         self.open_connection()
 
+    def _create_client(self, ip, port, config):
+        """ Creates a TCP client for the VG gripper. """
+        client = ModbusTcpClient(
+            ip,
+            port=port,
+            stopbits=config["stopbits"],
+            bytesize=config["bytesize"],
+            parity=config["parity"],
+            baudrate=config["baudrate"],
+            timeout=config["timeout"])
+        return client
+    
+    def _create_client_serial(self, serial, config):
+        """ Creates a serial client for the VG gripper. """
+        client = ModbusSerialClient(
+            method='rtu',
+            port=serial,
+            stopbits=config["stopbits"],
+            bytesize=config["bytesize"],
+            parity=config["parity"],
+            baudrate=config["baudrate"],
+            timeout=config["timeout"])
+        return client
+        
     def open_connection(self):
         """Opens the connection with a gripper."""
         self.client.connect()

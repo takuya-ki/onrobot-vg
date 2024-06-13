@@ -9,17 +9,21 @@ def get_options():
     """Returns user-specific options."""
     parser = argparse.ArgumentParser(description='Set options.')
     parser.add_argument(
-        '--ip', dest='ip', type=str, default="192.168.1.1",
+        '--ip', dest='ip', type=str, default=None,
         help='set ip address')
     parser.add_argument(
         '--port', dest='port', type=str, default="502",
         help='set port number')
+    parser.add_argument(
+        '--device', dest="device", type=str,  default=None,
+        help='set device path'
+    )
     return parser.parse_args()
 
 
 def run_demo():
     """Runs pump on/off demonstration once."""
-    vg = VG(toolchanger_ip, toolchanger_port)
+    vg = VG(ip=toolchanger_ip, port=toolchanger_port, device=args.device)
 
     vg.vacuum_on(sleep_sec=5.0)
     vg.release_vacuum()
