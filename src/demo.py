@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 
 from onrobot import VG
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 def get_options():
@@ -12,14 +15,14 @@ def get_options():
         '--ip', dest='ip', type=str, default="192.168.1.1",
         help='set ip address')
     parser.add_argument(
-        '--port', dest='port', type=str, default="502",
+        '--port', dest='port', type=int, default=502,
         help='set port number')
     return parser.parse_args()
 
 
-def run_demo():
+def run_demo(ip: str, port: int):
     """Runs pump on/off demonstration once."""
-    vg = VG(toolchanger_ip, toolchanger_port)
+    vg = VG(ip, port)
 
     vg.vacuum_on(sleep_sec=5.0)
     vg.release_vacuum()
@@ -33,6 +36,4 @@ def run_demo():
 
 if __name__ == '__main__':
     args = get_options()
-    toolchanger_ip = args.ip
-    toolchanger_port = args.port
-    run_demo()
+    run_demo(args.ip, args.port)

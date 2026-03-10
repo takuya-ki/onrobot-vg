@@ -1,189 +1,148 @@
 #!/usr/bin/env python3
 
+import logging
 import time
 from pymodbus.client.sync import ModbusTcpClient as ModbusClient
 
+# --- モジュールレベル定数 ---
+UNIT_ID = 65  # グリッパーのスレーブID（固定）
 
-class VG():
+# レジスタアドレス
+REG_CHANNEL_A = 0
+REG_CHANNEL_B = 1
+REG_CURRENT_LIMIT = 2
+REG_VACUUM_A = 258
+REG_VACUUM_B = 259
 
-    def __init__(self, ip, port):
-        self.client = ModbusClient(
-            ip,
-            port=port,
-            stopbits=1,
-            bytesize=8,
-            parity='E',
-            baudrate=115200,
-            timeout=1)
-        self.open_connection()
+# 制御モード値（上位バイト）
+MODE_RELEASE = 0x0000
+MODE_GRIP = 0x0100
+MODE_IDLE = 0x0200
 
-    def open_connection(self):
-        """Opens the connection with a gripper."""
-        self.client.connect()
+# 真空目標値（下位バイト）
+VACUUM_MAX = 0x00FF  # 100% vacuum
+
+log = logging.getLogger(__name__)
+
+
+class VG:
+
+    def __init__(self, ip: str, port: int = 502):
+        self.client = ModbusClient(ip, port=port, timeout=1)
+        if not self.client.connect():
+            raise ConnectionError(f"Failed to connect to {ip}:{port}")
+        log.info("Connected to %s:%s", ip, port)
 
     def close_connection(self):
         """Closes the connection with the gripper."""
         self.client.close()
+        log.info("Connection closed.")
 
-    def get_vacuum_limit(self):
-        """Sets and reads the current limit.
-        The limit is provided and must be given in mA (milli-amperes).
-        The limit is 500mA per default and should never be set above 1000 mA.
-        """
+    def _read_register(self, address: int) -> int:
+        """Reads a single holding register and raises IOError on failure."""
         result = self.client.read_holding_registers(
-            address=2, count=1, unit=65)
-        limit_mA = result.registers[0]
-        return limit_mA
+            address=address, count=1, unit=UNIT_ID)
+        if not hasattr(result, 'registers'):
+            raise IOError(f"Modbus read failed at address {address}: {result}")
+        return result.registers[0]
 
-    def get_channelA_vacuum(self):
-        """Reads the actual vacuum on Channel A.
-        The vacuum is provided in 1/1000 of relative vacuum.
-        Please note that this differs from the setpoint given in percent,
-        as extra accuracy is desirable on the actual vacuum.
+    def get_vacuum_limit(self) -> int:
+        """Reads the current limit in mA (default 500 mA, max 1000 mA)."""
+        return self._read_register(REG_CURRENT_LIMIT)
+
+    def get_channelA_vacuum(self) -> int:
+        """Reads the actual vacuum on Channel A (1/1000 of relative vacuum)."""
+        return self._read_register(REG_VACUUM_A)
+
+    def get_channelB_vacuum(self) -> int:
+        """Reads the actual vacuum on Channel B (1/1000 of relative vacuum)."""
+        return self._read_register(REG_VACUUM_B)
+
+    # --- 内部共通メソッド ---
+
+    def _set_channel_control(self, address: int, modename: str, command: int):
+        """Sets the control mode and target vacuum for a channel.
+
+        Args:
+            address: Register address (REG_CHANNEL_A or REG_CHANNEL_B).
+            modename: "Release", "Grip", or "Idle".
+            command: Target vacuum in % (only used in Grip mode, max 80).
         """
-        result = self.client.read_holding_registers(
-            address=258, count=1, unit=65)
-        vacuum = result.registers[0]
-        return vacuum
+        mode_map = {"Release": MODE_RELEASE, "Grip": MODE_GRIP, "Idle": MODE_IDLE}
+        if modename not in mode_map:
+            raise ValueError(
+                f"Invalid modename '{modename}'. Choose from {list(mode_map)}")
+        self.client.write_register(
+            address=address, value=mode_map[modename] + command, unit=UNIT_ID)
 
-    def get_channelB_vacuum(self):
-        """Same as the one of channel A."""
-        result = self.client.read_holding_registers(
-            address=259, count=1, unit=65)
-        vacuum = result.registers[0]
-        return vacuum
-
-    def set_channelA_control(self, modename, command):
-        """This register allows for control of channel A.
-
-        The register is split into two 8-bit fields:
-        Bits 15-8        Bits 7-0
-        Control mode     Target vacuum
-
-        The Control mode field must contain one of these three values:
-
-        Value    Name    Description
-        0 (0x00) Release Commands the channel to release
-                            any work item and stop the pump,
-                            if not required by the other channel.
-        1 (0x01) Grip    Commands the channel to build up
-                            and maintain vacuum on this channel.
-        2 (0x02) Idle    Commands the channel to neither release nor grip.
-                            Workpieces may "stick" to the channel
-                            if physically pressed towards its vacuum cups,
-                            but the VG will use slightly less power.
-
-            The Target vacuum field sets the level of vacuum
-            to be build up and maintained by the chann el.
-            It is used only when the control mode is 1 (0x01) / Grip.
-            The target vacuum should be provided in % vacuum.
-            It should never exceed 80.
-
-            Examples:
-            Setting the register value 0 (0x0000)
-                will command the VG to release the work item.
-            Setting the register value 276 (0x0114)
-                will command the VG to grip at 20 % vacuum.
-            Setting the register value 296 (0x0128)
-                will command the VG to grip at 40 % vacuum.
-            Setting the register value 331 (0x014B)
-                will command the VG to grip at 75 % vacuum.
-            Setting the register value 512 (0x0200)
-                will command the VG to idle the channel.
-        """
-        if modename == "Release":
-            modeval = 0x0000
-        elif modename == "Grip":
-            modeval = 0x0100
-        elif modename == "Idle":
-            modeval = 0x0200
-        result = self.client.write_register(
-            address=0, value=modeval+command, unit=65)
-
-    def set_channelB_control(self, modename, command):
-        """Same as the one of channel A."""
-        if modename == "Release":
-            modeval = 0x0000
-        elif modename == "Grip":
-            modeval = 0x0100
-        elif modename == "Idle":
-            modeval = 0x0200
-        result = self.client.write_register(
-            address=1, value=modeval+command, unit=65)
-
-    def vacuum_on(self, sleep_sec=1.0):
-        """Turns on all vacuums."""
-        modeval = 0x0100  # grip
-        command = 0x00ff  # 100 % vacuum
-        commands = [modeval+command, modeval+command]
-        result = self.client.write_registers(
-            address=0, values=commands, unit=65)
-
-        print("\nTurn on all vacuums.")
+    def _vacuum_on_channel(self, address: int, read_fn, label: str, sleep_sec: float):
+        """Writes grip command and polls vacuum every 0.1 s until sleep_sec elapses."""
+        self.client.write_register(
+            address=address, value=MODE_GRIP + VACUUM_MAX, unit=UNIT_ID)
+        log.info("Turn on the vacuum of %s.", label)
         start = time.time()
-        while True:
-            print("Current vacuums, channel A: " +
-                  str(self.get_channelA_vacuum()) +
-                  ", channel B: " +
-                  str(self.get_channelB_vacuum()))
-            if time.time() - start > sleep_sec:
-                break
+        while time.time() - start < sleep_sec:
+            log.info("Current %s vacuum: %d", label, read_fn())
+            time.sleep(0.1)
 
-    def release_vacuum(self):
-        """Releases all vacuums"""
-        modeval = 0x0000  # release
-        command = 0x0000  # 0 % vacuum
-        commands = [modeval+command, modeval+command]
-
-        print("\nRelease all vacuums.")
-        result = self.client.write_registers(
-            address=0, values=commands, unit=65)
+    def _release_vacuum_channel(self, address: int, label: str):
+        """Writes release command and waits 1 second."""
+        self.client.write_register(
+            address=address, value=MODE_RELEASE, unit=UNIT_ID)
+        log.info("Release the vacuum of %s.", label)
         time.sleep(1.0)
 
-    def vacuum_on_channelA(self, sleep_sec=1.0):
+    # --- 公開API ---
+
+    def set_channelA_control(self, modename: str, command: int):
+        """Controls channel A.
+
+        modename: 'Release', 'Grip', or 'Idle'.
+        command: Target vacuum in % (used only in Grip mode, max 80).
+        """
+        self._set_channel_control(REG_CHANNEL_A, modename, command)
+
+    def set_channelB_control(self, modename: str, command: int):
+        """Controls channel B.
+
+        modename: 'Release', 'Grip', or 'Idle'.
+        command: Target vacuum in % (used only in Grip mode, max 80).
+        """
+        self._set_channel_control(REG_CHANNEL_B, modename, command)
+
+    def vacuum_on(self, sleep_sec: float = 1.0):
+        """Turns on all vacuums (channel A and B simultaneously)."""
+        commands = [MODE_GRIP + VACUUM_MAX, MODE_GRIP + VACUUM_MAX]
+        self.client.write_registers(address=REG_CHANNEL_A, values=commands, unit=UNIT_ID)
+        log.info("Turn on all vacuums.")
+        start = time.time()
+        while time.time() - start < sleep_sec:
+            log.info(
+                "Current vacuums, channel A: %d, channel B: %d",
+                self.get_channelA_vacuum(), self.get_channelB_vacuum())
+            time.sleep(0.1)
+
+    def release_vacuum(self):
+        """Releases all vacuums (channel A and B simultaneously)."""
+        commands = [MODE_RELEASE, MODE_RELEASE]
+        self.client.write_registers(address=REG_CHANNEL_A, values=commands, unit=UNIT_ID)
+        log.info("Release all vacuums.")
+        time.sleep(1.0)
+
+    def vacuum_on_channelA(self, sleep_sec: float = 1.0):
         """Turns on the vacuum of channel A."""
-        modeval = 0x0100  # grip
-        command = 0x00ff  # 100 % vacuum
-        result = self.client.write_register(
-            address=0, value=modeval+command, unit=65)
+        self._vacuum_on_channel(
+            REG_CHANNEL_A, self.get_channelA_vacuum, "channel A", sleep_sec)
 
-        print("\nTurn on the vacuum of channel A.")
-        start = time.time()
-        while True:
-            print("Current channel A's vacuum: " +
-                  str(self.get_channelA_vacuum()))
-            if time.time() - start > sleep_sec:
-                break
-
-    def vacuum_on_channelB(self, sleep_sec=1.0):
+    def vacuum_on_channelB(self, sleep_sec: float = 1.0):
         """Turns on the vacuum of channel B."""
-        modeval = 0x0100  # grip
-        command = 0x00ff  # 100 % vacuum
-        result = self.client.write_register(
-            address=1, value=modeval+command, unit=65)
-
-        print("\nTurn on the vacuum of channel B.")
-        start = time.time()
-        while True:
-            print("Current channel B's vacuum: " +
-                  str(self.get_channelB_vacuum()))
-            if time.time() - start > sleep_sec:
-                break
+        self._vacuum_on_channel(
+            REG_CHANNEL_B, self.get_channelB_vacuum, "channel B", sleep_sec)
 
     def release_vacuum_channelA(self):
         """Releases the vacuum of channel A."""
-        modeval = 0x0000  # release
-        command = 0x0000  # 0 % vacuum
-        print("\nRelease the vacuum of channel A.")
-        result = self.client.write_register(
-            address=0, value=modeval+command, unit=65)
-        time.sleep(1.0)
+        self._release_vacuum_channel(REG_CHANNEL_A, "channel A")
 
     def release_vacuum_channelB(self):
         """Releases the vacuum of channel B."""
-        modeval = 0x0000  # release
-        command = 0x0000  # 0 % vacuum
-        print("\nRelease the vacuum of channel B.")
-        result = self.client.write_register(
-            address=1, value=modeval+command, unit=65)
-        time.sleep(1.0)
+        self._release_vacuum_channel(REG_CHANNEL_B, "channel B")
